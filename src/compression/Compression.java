@@ -13,6 +13,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
@@ -54,19 +56,63 @@ public class Compression {
             br.write("" + height);
             br.write("\r\n");
             
+            String[] allPixels = new String[width*height];
+            int index = 0;
+            
             for(int y = 0; y < height; y ++)
             {
                 for(int x = 0; x < width; x ++)
                 {
                     Color pixel = new Color(original.getRGB(x, y));
-                    br.write("" + pixel.getRed() + " " + pixel.getGreen() + " " + pixel.getBlue() + ",");
+                    
+                    String code;
+                    if(pixel.getRed() > 0)
+                    {
+                        code = "1";
+                    }
+                    else
+                    {
+                        code = "0";
+                    }
+                    allPixels[index] = code;
+                    index++;
                 }
-                br.write("\r\n");
+                
+                
+            }
+            
+            //Loop is done. Now see what kind of streaks we have.
+            //Let's assume we start with black.
+            
+            List<Integer> runs = new ArrayList<Integer>();
+            int currentRun = 0;
+            String currentColor = "0";
+            for(int i = 0; i < allPixels.length; i++)
+            {
+                if(allPixels[i].equals(currentColor))
+                {
+                    currentRun++;
+                }
+                else
+                {
+                    runs.add(currentRun);
+                    currentRun = 1;
+                    currentColor = currentColor.equals("0") ? "1" : "0";
+                }
+            }
+            //Make sure we add the last run.
+            runs.add(currentRun);
+            
+            for(int i = 0;  i < runs.size(); i++)
+            {
+                br.write("" + runs.get(i));
             }
             
         } catch (IOException ex) {
             Logger.getLogger(Compression.class.getName()).log(Level.SEVERE, null, ex);
         }
+        
+       
         
         return filename;
         
@@ -89,21 +135,51 @@ public class Compression {
             
             bi = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
             
+            line = br.readLine();
+
+            String[] pixelStrings = line.split("");
+            
+            int[] runs = new int[pixelStrings.length];
+            
+            for(int i = 0; i < pixelStrings.length; i++)
+            {
+                runs[i] = Integer.parseInt(pixelStrings[i]);
+            }
+            
+            List<String> oneDImage = new ArrayList<String>();
+            
+            String currentColor = "0";
+            for(int i = 0; i < runs.length; i++)
+            {
+                int length = runs[i];
+                for(int j = 0; j < length; j++)
+                {
+                    oneDImage.add(currentColor);
+                }
+                 currentColor = currentColor.equals("0") ? "1" : "0";
+            }
+            
+            int index = 0;
             
             for(int y = 0; y < height; y ++)
             {
-                line = br.readLine();
-                
-                String[] pixelStrings = line.split(",");
                 for(int x = 0; x < width; x ++)
                 {
-                    String pixelString = pixelStrings[x].trim();
-                    String[] rgb = pixelString.split(" ");
-                    int r = Integer.parseInt(rgb[0]);
-                    int g = Integer.parseInt(rgb[1]);
-                    int b = Integer.parseInt(rgb[2]);
                     
-                    bi.setRGB(x, y, new Color(r,g,b).getRGB());
+                    
+                    
+                    Color color;
+                    
+                    if(oneDImage.get(index).equals("0"))
+                        color = Color.BLACK;
+                    
+                    else
+                        color = Color.WHITE;
+                    
+                    
+                    bi.setRGB(x, y, color.getRGB());
+                    
+                    index++;
                     
                 }
                
